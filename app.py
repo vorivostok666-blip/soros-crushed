@@ -56,37 +56,48 @@ while True:
     teleport_cost = get_teleport_cost()
     now = pd.Timestamp.now()
 
+    table_rows = []
+
+    for before, after in ITEMS.items():
+        if before in data and after in data:
+            buy_price = data[before]["low"]
+            sell_price = data[after]["high"]
+
+            crush_cost = 50
+            teleport_per_item = teleport_cost / qty
+            cost_per_item = buy_price + crush_cost + teleport_per_item
+            revenue_per_item = sell_price * 0.98
+            profit_per_item = revenue_per_item - cost_per_item
+            total_profit = profit_per_item * qty
+
+            table_rows.append({
+                "Item Before": before,
+                "Item After": after,
+                "Buy Price": buy_price,
+                "Sell Price": sell_price,
+                "Profit/Item": round(profit_per_item, 2),
+                "Total Profit": round(total_profit, 0)
+            })
+
+            # Simpan ke history
+            new_row = pd.DataFrame({
+                "time": [now],
+                "item": [before],
+                "profit_total": [total_profit]
+            })
+            history = pd.concat([history, new_row], ignore_index=True)
+
+    # Tampilkan tabel semua item
     with placeholder.container():
-        for before, after in ITEMS.items():
-            if before in data and after in data:
-                buy_price = data[before]["low"]
-                sell_price = data[after]["high"]
-
-                crush_cost = 50
-                teleport_per_item = teleport_cost / qty
-                cost_per_item = buy_price + crush_cost + teleport_per_item
-                revenue_per_item = sell_price * 0.98
-                profit_per_item = revenue_per_item - cost_per_item
-                total_profit = profit_per_item * qty
-
-                st.subheader(f"{before} → {after}")
-                st.write(f"📉 Buy price: {buy_price} gp")
-                st.write(f"📈 Sell price: {sell_price} gp")
-                st.write(f"💰 Profit per item: {profit_per_item:.2f} gp")
-                st.write(f"💵 Total profit ({qty}): {total_profit:,.0f} gp")
-
-                if total_profit >= threshold:
-                    st.success("✅ Profitable! Target tercapai.")
+        st.subheader("📊 Profit Table")
+        if table_rows:
+            st.dataframe(pd.DataFrame(table_rows))
+            # Status threshold
+            for row in table_rows:
+                if row["Total Profit"] >= threshold:
+                    st.success(f"✅ {row['Item Before']} → {row['Item After']} profitable! Target tercapai.")
                 else:
-                    st.warning("⚠️ Belum worth, profit di bawah threshold.")
-
-                # Simpan ke history dengan concat yang benar
-                new_row = pd.DataFrame({
-                    "time": [now],
-                    "item": [before],
-                    "profit_total": [total_profit]
-                })
-                history = pd.concat([history, new_row], ignore_index=True)
+                    st.warning(f"⚠️ {row['Item Before']} → {row['Item After']} belum worth, profit di bawah threshold.")
 
     # Tampilkan grafik tren profit
     if not history.empty:
