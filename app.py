@@ -1,7 +1,7 @@
 import requests
 import streamlit as st
-import time
 import pandas as pd
+from datetime import datetime
 
 API_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
 
@@ -19,6 +19,10 @@ st.title("🧪 OSRS Crush Profit Tracker")
 
 qty = st.number_input("Jumlah item", min_value=1, value=4432)
 threshold = st.slider("Profit threshold (gp)", min_value=0, max_value=1000000, value=100000)
+
+# Session state untuk history
+if "history" not in st.session_state:
+    st.session_state["history"] = pd.DataFrame(columns=["time", "item", "profit_total"])
 
 # Ambil harga teleport Nardah dari API (selalu update)
 def get_teleport_cost():
@@ -45,16 +49,11 @@ def get_prices():
         st.error(f"Error ambil data: {e}")
         return {}
 
-# DataFrame untuk history
-history = pd.DataFrame(columns=["time", "item", "profit_total"])
-
-placeholder = st.empty()
-chart_placeholder = st.empty()
-
-while True:
+# Tombol refresh manual
+if st.button("🔄 Refresh Data"):
     data = get_prices()
     teleport_cost = get_teleport_cost()
-    now = pd.Timestamp.now()
+    now = datetime.now()
 
     table_rows = []
 
@@ -85,24 +84,24 @@ while True:
                 "item": [before],
                 "profit_total": [total_profit]
             })
-            history = pd.concat([history, new_row], ignore_index=True)
+            st.session_state["history"] = pd.concat(
+                [st.session_state["history"], new_row], ignore_index=True
+            )
 
     # Tampilkan tabel semua item
-    with placeholder.container():
-        st.subheader("📊 Profit Table")
-        if table_rows:
-            st.dataframe(pd.DataFrame(table_rows))
-            # Status threshold
-            for row in table_rows:
-                if row["Total Profit"] >= threshold:
-                    st.success(f"✅ {row['Item Before']} → {row['Item After']} profitable! Target tercapai.")
-                else:
-                    st.warning(f"⚠️ {row['Item Before']} → {row['Item After']} belum worth, profit di bawah threshold.")
+    st.subheader("📊 Profit Table")
+    if table_rows:
+        st.dataframe(pd.DataFrame(table_rows))
+        # Status threshold
+        for row in table_rows:
+            if row["Total Profit"] >= threshold:
+                st.success(f"✅ {row['Item Before']} → {row['Item After']} profitable! Target tercapai.")
+            else:
+                st.warning(f"⚠️ {row['Item Before']} → {row['Item After']} belum worth, profit di bawah threshold.")
 
     # Tampilkan grafik tren profit
-    if not history.empty:
-        chart_placeholder.line_chart(
-            history.pivot(index="time", columns="item", values="profit_total")
+    if not st.session_state["history"].empty:
+        st.subheader("📈 Profit History")
+        st.line_chart(
+            st.session_state["history"].pivot(index="time", columns="item", values="profit_total")
         )
-
-    time.sleep(60)
