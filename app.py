@@ -7,8 +7,8 @@ API_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
 
 # Item pairs: (before, after)
 ITEMS = {
+    "Bird nest": "Crushed nest",
     "Unicorn horn": "Unicorn horn dust",
-    "Crushed nest": "Crushed nest",  # sudah crushed, tampilkan harga saja
     "Red dragon scale": "Dragon scale dust",
     "Goat horn": "Goat horn dust",
     "Kebbit teeth": "Kebbit teeth dust",
@@ -23,17 +23,24 @@ threshold = st.slider("Profit threshold (gp)", min_value=0, max_value=1000000, v
 # Ambil harga teleport Nardah dari API (selalu update)
 def get_teleport_cost():
     try:
-        resp = requests.get(API_URL)
-        data = resp.json()["data"]
+        resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+        if resp.status_code != 200:
+            st.error(f"API error (teleport): {resp.status_code}")
+            return 12300
+        data = resp.json().get("data", {})
         # contoh: pakai law rune sebagai proxy (2 law rune per teleport)
-        return data["law rune"]["high"] * 2
-    except:
+        return data.get("law rune", {}).get("high", 615) * 2
+    except Exception as e:
+        st.error(f"Error ambil teleport cost: {e}")
         return 12300  # fallback default
 
 def get_prices():
     try:
-        resp = requests.get(API_URL)
-        return resp.json()["data"]
+        resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+        if resp.status_code != 200:
+            st.error(f"API error: {resp.status_code}")
+            return {}
+        return resp.json().get("data", {})
     except Exception as e:
         st.error(f"Error ambil data: {e}")
         return {}
@@ -77,12 +84,3 @@ while True:
                 history = pd.concat([
                     history,
                     pd.DataFrame({"time": [now], "item": [before], "profit_total": [total_profit]})
-                ])
-
-    # Tampilkan grafik tren profit
-    if not history.empty:
-        chart_placeholder.line_chart(
-            history.pivot(index="time", columns="item", values="profit_total")
-        )
-
-    time.sleep(60)
