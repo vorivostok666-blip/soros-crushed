@@ -4,12 +4,26 @@ import pandas as pd
 from datetime import datetime
 
 API_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
+MAP_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping"
 
-# Item pairs: (before, after)
+# Ambil mapping item → nama valid
+@st.cache_data
+def get_mapping():
+    try:
+        resp = requests.get(MAP_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+        if resp.status_code == 200:
+            return {item["name"].lower(): item["id"] for item in resp.json()}
+    except:
+        return {}
+    return {}
+
+mapping = get_mapping()
+
+# Item pairs dengan nama sesuai API
 ITEMS = {
-    "Bird nest": "Crushed nest",
+    "Bird nest (empty)": "Crushed nest",
     "Unicorn horn": "Unicorn horn dust",
-    "Red dragon scale": "Dragon scale dust",
+    "Dragon scale": "Dragon scale dust",
     "Goat horn": "Goat horn dust",
     "Kebbit teeth": "Kebbit teeth dust",
     "Nihil shard": "Nihil dust"
@@ -17,38 +31,32 @@ ITEMS = {
 
 st.title("🧪 OSRS Crush Profit Calculator")
 
-# Pilih item dulu
 selected_item = st.selectbox("Pilih item yang mau dihitung:", list(ITEMS.keys()))
-
-# Input jumlah beli
 qty = st.number_input("Jumlah item dibeli", min_value=1, value=4432)
 threshold = st.slider("Profit threshold (gp)", min_value=0, max_value=1000000, value=100000)
 
-# Session state untuk history
 if "history" not in st.session_state:
     st.session_state["history"] = pd.DataFrame(columns=["time", "item", "profit_total"])
 
 def get_prices():
     try:
         resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
-        if resp.status_code != 200:
-            return {}
-        return resp.json().get("data", {})
+        if resp.status_code == 200:
+            return resp.json().get("data", {})
     except:
         return {}
+    return {}
 
 def get_teleport_cost():
     try:
         resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
-        if resp.status_code != 200:
-            return 12300
-        data = resp.json().get("data", {})
-        # contoh: pakai law rune sebagai proxy (2 law rune per teleport)
-        return data.get("law rune", {}).get("high", 615) * 2
+        if resp.status_code == 200:
+            data = resp.json().get("data", {})
+            return data.get("law rune", {}).get("high", 615) * 2
     except:
         return 12300
+    return 12300
 
-# Tombol refresh manual
 if st.button("🔄 Hitung Profit"):
     data = get_prices()
     teleport_cost = get_teleport_cost()
@@ -67,7 +75,6 @@ if st.button("🔄 Hitung Profit"):
         profit_per_item = revenue_per_item - cost_per_item
         total_profit = profit_per_item * qty
 
-        # Tampilkan hasil
         st.subheader(f"Hasil: {selected_item} → {after_item}")
         st.write(f"📉 Buy price: {buy_price} gp")
         st.write(f"📈 Sell price: {sell_price} gp")
@@ -79,7 +86,6 @@ if st.button("🔄 Hitung Profit"):
         else:
             st.warning("⚠️ Belum worth, profit di bawah threshold.")
 
-        # Simpan ke history
         new_row = pd.DataFrame({
             "time": [now],
             "item": [selected_item],
@@ -88,11 +94,9 @@ if st.button("🔄 Hitung Profit"):
         st.session_state["history"] = pd.concat(
             [st.session_state["history"], new_row], ignore_index=True
         )
-
     else:
-        st.error("Data item tidak ditemukan di API.")
+        st.error("Nama item tidak cocok dengan API. Coba cek mapping OSRS Wiki.")
 
-    # Grafik tren profit
     if not st.session_state["history"].empty:
         st.subheader("📈 Profit History")
         st.line_chart(
