@@ -80,7 +80,18 @@ while True:
                 else:
                     st.warning("⚠️ Belum worth, profit di bawah threshold.")
 
-                # Simpan ke history
-                history = pd.concat([
-                    history,
-                    pd.DataFrame({"time": [now], "item": [before], "profit_total": [total_profit]})
+                # Simpan ke history dengan concat yang benar
+                new_row = pd.DataFrame({
+                    "time": [now],
+                    "item": [before],
+                    "profit_total": [total_profit]
+                })
+                history = pd.concat([history, new_row], ignore_index=True)
+
+    # Tampilkan grafik tren profit
+    if not history.empty:
+        chart_placeholder.line_chart(
+            history.pivot(index="time", columns="item", values="profit_total")
+        )
+
+    time.sleep(60)
