@@ -31,6 +31,7 @@ st.title("🧪 OSRS Crush Profit Calculator")
 selected_item = st.selectbox("Pilih item yang mau dihitung:", list(ITEMS.keys()))
 qty = st.number_input("Jumlah item dibeli", min_value=1, value=4432)
 threshold = st.slider("Profit threshold (gp)", min_value=0, max_value=1000000, value=100000)
+target_profit = st.number_input("Target minimal profit (gp)", min_value=0, value=100000)
 
 if "history" not in st.session_state:
     st.session_state["history"] = pd.DataFrame(columns=["time", "item", "profit_total"])
@@ -71,6 +72,10 @@ if st.button("🔄 Hitung Profit"):
         profit_per_item = revenue_per_item - cost_per_item
         total_profit = profit_per_item * qty
 
+        # Hitung batas harga beli agar profit ≥ target_profit
+        required_margin = target_profit / qty
+        max_buy_price = revenue_per_item - crush_cost - teleport_per_item - required_margin
+
         st.subheader(f"Hasil: {selected_item} → {after_item}")
         st.write(f"📉 Buy price: {buy_price} gp")
         st.write(f"📈 Sell price: {sell_price} gp")
@@ -79,6 +84,7 @@ if st.button("🔄 Hitung Profit"):
         st.write(f"💸 Pajak GE: {tax_rate*100:.0f}%")
         st.write(f"💰 Profit per item: {profit_per_item:.2f} gp")
         st.write(f"💵 Total profit ({qty}): {total_profit:,.0f} gp")
+        st.write(f"📊 Batas harga beli agar profit ≥ {target_profit:,} gp: ≤ {max_buy_price:.0f} gp per item")
 
         if total_profit >= threshold:
             st.success("✅ Profitable! Target tercapai.")
