@@ -6,20 +6,17 @@ from datetime import datetime
 API_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
 MAP_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping"
 
-# Ambil mapping item → nama valid
+# Ambil mapping item → id
 @st.cache_data
 def get_mapping():
-    try:
-        resp = requests.get(MAP_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
-        if resp.status_code == 200:
-            return {item["name"].lower(): item["id"] for item in resp.json()}
-    except:
-        return {}
+    resp = requests.get(MAP_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+    if resp.status_code == 200:
+        return {item["name"]: item["id"] for item in resp.json()}
     return {}
 
 mapping = get_mapping()
 
-# Item pairs dengan nama sesuai API
+# Item pairs dengan nama sesuai mapping
 ITEMS = {
     "Bird nest (empty)": "Crushed nest",
     "Unicorn horn": "Unicorn horn dust",
@@ -39,22 +36,16 @@ if "history" not in st.session_state:
     st.session_state["history"] = pd.DataFrame(columns=["time", "item", "profit_total"])
 
 def get_prices():
-    try:
-        resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
-        if resp.status_code == 200:
-            return resp.json().get("data", {})
-    except:
-        return {}
+    resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+    if resp.status_code == 200:
+        return resp.json().get("data", {})
     return {}
 
 def get_teleport_cost():
-    try:
-        resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
-        if resp.status_code == 200:
-            data = resp.json().get("data", {})
-            return data.get("law rune", {}).get("high", 615) * 2
-    except:
-        return 12300
+    resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
+    if resp.status_code == 200:
+        data = resp.json().get("data", {})
+        return data.get("law rune", {}).get("high", 615) * 2
     return 12300
 
 if st.button("🔄 Hitung Profit"):
@@ -64,9 +55,13 @@ if st.button("🔄 Hitung Profit"):
 
     after_item = ITEMS[selected_item]
 
-    if selected_item in data and after_item in data:
-        buy_price = data[selected_item]["low"]
-        sell_price = data[after_item]["high"]
+    # Ambil ID dari mapping
+    before_id = mapping.get(selected_item)
+    after_id = mapping.get(after_item)
+
+    if before_id and after_id and str(before_id) in data and str(after_id) in data:
+        buy_price = data[str(before_id)]["low"]
+        sell_price = data[str(after_id)]["high"]
 
         crush_cost = 50
         teleport_per_item = teleport_cost / qty
@@ -95,7 +90,7 @@ if st.button("🔄 Hitung Profit"):
             [st.session_state["history"], new_row], ignore_index=True
         )
     else:
-        st.error("Nama item tidak cocok dengan API. Coba cek mapping OSRS Wiki.")
+        st.error("Item tidak ditemukan di mapping API. Coba cek nama item di OSRS Wiki.")
 
     if not st.session_state["history"].empty:
         st.subheader("📈 Profit History")
