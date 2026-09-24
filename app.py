@@ -55,7 +55,6 @@ if st.button("🔄 Hitung Profit"):
 
     after_item = ITEMS[selected_item]
 
-    # Ambil ID dari mapping
     before_id = mapping.get(selected_item)
     after_id = mapping.get(after_item)
 
@@ -65,14 +64,19 @@ if st.button("🔄 Hitung Profit"):
 
         crush_cost = 50
         teleport_per_item = teleport_cost / qty
+        tax_rate = 0.02
+
         cost_per_item = buy_price + crush_cost + teleport_per_item
-        revenue_per_item = sell_price * 0.98
+        revenue_per_item = sell_price * (1 - tax_rate)
         profit_per_item = revenue_per_item - cost_per_item
         total_profit = profit_per_item * qty
 
         st.subheader(f"Hasil: {selected_item} → {after_item}")
         st.write(f"📉 Buy price: {buy_price} gp")
         st.write(f"📈 Sell price: {sell_price} gp")
+        st.write(f"🪙 Biaya crush Wesley: {crush_cost} gp/item")
+        st.write(f"🌀 Biaya teleport Nardah: {teleport_cost} gp total (≈ {teleport_per_item:.2f} gp/item)")
+        st.write(f"💸 Pajak GE: {tax_rate*100:.0f}%")
         st.write(f"💰 Profit per item: {profit_per_item:.2f} gp")
         st.write(f"💵 Total profit ({qty}): {total_profit:,.0f} gp")
 
