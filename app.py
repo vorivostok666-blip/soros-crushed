@@ -29,24 +29,20 @@ def get_teleport_cost():
     try:
         resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
         if resp.status_code != 200:
-            st.error(f"API error (teleport): {resp.status_code}")
             return 12300
         data = resp.json().get("data", {})
         # contoh: pakai law rune sebagai proxy (2 law rune per teleport)
         return data.get("law rune", {}).get("high", 615) * 2
-    except Exception as e:
-        st.error(f"Error ambil teleport cost: {e}")
+    except:
         return 12300  # fallback default
 
 def get_prices():
     try:
         resp = requests.get(API_URL, headers={"User-Agent": "callista-osrs-bot/1.0"})
         if resp.status_code != 200:
-            st.error(f"API error: {resp.status_code}")
             return {}
         return resp.json().get("data", {})
-    except Exception as e:
-        st.error(f"Error ambil data: {e}")
+    except:
         return {}
 
 # Tombol refresh manual
@@ -91,13 +87,17 @@ if st.button("🔄 Refresh Data"):
     # Tampilkan tabel semua item
     st.subheader("📊 Profit Table")
     if table_rows:
-        st.dataframe(pd.DataFrame(table_rows))
-        # Status threshold
+        df = pd.DataFrame(table_rows)
+        st.dataframe(df, use_container_width=True)
+
+        # Status threshold per item
         for row in table_rows:
             if row["Total Profit"] >= threshold:
                 st.success(f"✅ {row['Item Before']} → {row['Item After']} profitable! Target tercapai.")
             else:
                 st.warning(f"⚠️ {row['Item Before']} → {row['Item After']} belum worth, profit di bawah threshold.")
+    else:
+        st.info("Tidak ada data item yang tersedia dari API.")
 
     # Tampilkan grafik tren profit
     if not st.session_state["history"].empty:
